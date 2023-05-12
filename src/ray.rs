@@ -1,14 +1,14 @@
-mod vec3;
-use vec3::*;
+use crate::vec3::*;
+use num_traits::real::Real;
 
-struct Ray {
-    pub origin: Point3,
-    pub direction: Vec3,
+struct Ray<T> {
+    pub origin: Point3<T>,
+    pub direction: Vec3<T>,
 }
 
-impl Ray {
-    fn at(&self, t: f64) -> Point3 {
-        self.origin + t * self.direction
+impl<T: Real> Ray<T> {
+    fn at(&self, t: T) -> Point3<T> {
+        self.origin + self.direction * t
     }
 }
 
@@ -19,10 +19,10 @@ mod tests {
 
     #[test]
     fn general() {
-        let ray = Ray(
-            Point3(1.0, 2.0, 3.0),
-            Vec3(1.0, 2.0, 3.0),
-        );
+        let ray = Ray {
+            origin: Point3(1.0, 2.0, 3.0),
+            direction: Vec3(1.0, 2.0, 3.0),
+        };
 
         assert_eq!(ray.at(0.0), Point3(1.0, 2.0, 3.0));
         assert_eq!(ray.at(1.0), Point3(2.0, 4.0, 6.0));

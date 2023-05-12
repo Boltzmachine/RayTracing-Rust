@@ -1,20 +1,19 @@
 mod vec3;
+mod ray;
 use vec3::*;
+use ray::*;
+use num_traits::cast::ToPrimitive;
 
-macro_rules! float_to_rgb_scalar {
-    ($x:expr) => {
-        (255.999 * $x) as u8
-    };
+
+fn float_to_rgb_vec<T: ToPrimitive>(r: T, g: T, b: T) -> (u8, u8, u8) {
+    let r = (255.999 * r.to_f64().unwrap()) as u8;
+    let g = (255.999 * g.to_f64().unwrap()) as u8;
+    let b = (255.999 * b.to_f64().unwrap()) as u8;
+    (r, g, b)
 }
 
-macro_rules! float_to_rgb_vec {
-    ($r:expr, $g:expr, $b:expr) => {
-        (float_to_rgb_scalar!($r), float_to_rgb_scalar!($g), float_to_rgb_scalar!($b))
-    };
-}
-
-fn write_color(pixel_color: Color3) {
-    let (r, g, b) = float_to_rgb_vec!(pixel_color.x(), pixel_color.y(), pixel_color.z());
+fn write_color<T: Copy + ToPrimitive>(pixel_color: Color3<T>) {
+    let (r, g, b) = float_to_rgb_vec(pixel_color.x(), pixel_color.y(), pixel_color.z());
     println!("{} {} {}", r, g, b);
 }
 
