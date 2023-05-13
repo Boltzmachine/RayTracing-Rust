@@ -1,13 +1,17 @@
 use crate::vec3::*;
-use num_traits::real::Real;
+use num::Float;
 
-struct Ray<T> {
+#[derive(Debug, Copy, Clone)]
+pub struct Ray<T> 
+where
+    T: Float
+{
     pub origin: Point3<T>,
     pub direction: Vec3<T>,
 }
 
-impl<T: Real> Ray<T> {
-    fn at(&self, t: T) -> Point3<T> {
+impl<T: Float> Ray<T> {
+    pub fn at(&self, t: T) -> Point3<T> {
         self.origin + self.direction * t
     }
 }
