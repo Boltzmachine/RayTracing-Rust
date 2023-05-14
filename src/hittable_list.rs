@@ -2,7 +2,7 @@ use crate::ray::*;
 use crate::hittable::*;
 use num::Float;
 
-pub type HittableList<T> = Vec<Box<dyn Hittable<T>>>;
+pub type HittableList<T> = Vec<Box<dyn Hittable<T> + Send + Sync>>;
 
 impl<T> Hittable<T> for HittableList<T>
 where

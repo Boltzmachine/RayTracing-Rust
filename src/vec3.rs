@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub, Mul, Div, Index, IndexMut, Neg};
+use std::ops::{Add, Sub, Mul, Div, Index, IndexMut, Neg, AddAssign};
 use std::marker::Copy;
 use num::{Float, FromPrimitive};
 
@@ -32,6 +32,22 @@ impl<T: Float> Add<T> for Vec3<T> {
     type Output = Self;
     fn add(self, other: T) -> Self::Output {
         Self(self.x() + other, self.y() + other, self.z() + other )
+    }
+}
+
+impl<T: Float> AddAssign for Vec3<T> {
+    fn add_assign(&mut self, other: Self) {
+        self.0 = self.0 + other.x();
+        self.1 = self.1 + other.y();
+        self.2 = self.2 + other.z();
+    }
+}
+
+impl<T: Float> AddAssign<T> for Vec3<T> {
+    fn add_assign(&mut self, other: T) {
+        self.0 = self.0 + other;
+        self.1 = self.1 + other;
+        self.2 = self.2 + other;
     }
 }
 
@@ -125,7 +141,7 @@ mod tests {
 
     #[test]
     fn new() {
-        let v: Vec3<f32> = Vec3::new(1.0, 2.0, 3.0);
+        let _: Vec3<f32> = Vec3::new(1.0, 2.0, 3.0);
     }
 
     #[test]
@@ -153,6 +169,15 @@ mod tests {
         assert_eq!(v3.x(), 5.0);
         assert_eq!(v3.y(), 7.0);
         assert_eq!(v3.z(), 9.0);
+    }
+
+    #[test]
+    fn add_assign() {
+        let mut v = Vec3(1.0, 2.0, 3.0);
+        v += 1.0;
+        assert_eq!(v, Vec3(2.0, 3.0, 4.0));
+        v += Vec3(1.0, 2.0, 3.0);
+        assert_eq!(v, Vec3(3.0, 5.0, 7.0));
     }
 
     #[test]
