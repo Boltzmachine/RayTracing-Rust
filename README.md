@@ -1,7 +1,7 @@
 # Ray Tracing in One Weekend - Rust
-This repo is a Rust realization of [Ray Tracing in One Weekend](https://raytracing.github.io/).
+This repo is a Rust implementation of [Ray Tracing in One Weekend](https://raytracing.github.io/).
 
-## Extra Features (Not Implemented in the vanilla version)
+## Extra Features (Not Implemented in the vanilla C++ version)
 - multithreading rendering (CPU)
 - generic type (not perfect)
 
