@@ -18,7 +18,6 @@ use image::*;
 use materials::*;
 
 use std::f64::INFINITY;
-use std::rc::Rc;
 use threadpool::ThreadPool;
 use std::sync::{mpsc, Arc, Mutex};
 use rand::Rng;
@@ -34,8 +33,13 @@ where
     let t = world.hit(&ray, T::from_f64(0.001).unwrap(), T::from_f64(INFINITY).unwrap());
     match t {
         Some(hit) => {
-            let target = hit.p + hit.normal + random_in_unit_sphere();
-            ray_color(Ray::<T> { origin: hit.p, direction: target - hit.p }, world, depth-1) * T::from_f64(0.5).unwrap()
+            let hit_result = hit.material.scatter(&ray, &hit);
+            match hit_result {
+                Some((attenuation, scattered)) => {
+                    attenuation * ray_color(scattered, world, depth - 1)
+                },
+            None => Color3::new(0.0, 0.0, 0.0)
+            }
         },
         None => {
             let unit_direction = ray.direction.to_unit();
@@ -69,25 +73,46 @@ where
     Box::new(image)
 }
 
+
+macro_rules! create_material {
+    ("lambertian", ($r:expr, $g:expr, $b:expr)) => {
+        Arc::new(Lambertian::<f64> {albedo: Color3::new($r, $g, $b)})
+    };
+    ("metal", ($r:expr, $g:expr, $b:expr), $f:expr) => {
+        Arc::new(Metal::<f64> {albedo: Color3::new($r, $g, $b), fuzz: $f})
+    };
+    ("dielectric", $ir:expr) => {
+        Arc::new(Dielectric::<f64> {ir: $ir})
+    }
+}
+
+macro_rules! create_objects {
+    ("sphere", $center:expr, $radius:expr, $material:expr) => {
+        Box::new(Sphere {
+                    center: $center,
+                    radius: $radius,
+                    material: Arc::clone(&$material) as _,
+                })
+    };
+}
+
 fn main() {
 
     // Materials
-    let material_ground = Arc::new(Lambertian::<f64> {albedo: Color3::new(0.8, 0.8, 0.0)});
+    let material_ground = create_material!("lambertian", (0.8, 0.8, 0.0));
+    let material_center = create_material!("dielectric", 1.5);
+    let material_left = create_material!("dielectric", 1.5);
+    let material_right = create_material!("metal", (0.8, 0.6, 0.2), 1.0);
 
     // World
     let world: HittableList::<'_, f64> = vec![
-        Box::new(Sphere {
-                    center: Point3::new(0.0, 0.0, -1.0),
-                    radius: 0.5,
-                    material: Arc::clone(&material_ground) as _,
-                }),
-        Box::new(Sphere {
-                    center: Point3::new(0.0, -100.5, -1.0),
-                    radius: 100.0,
-                    material: Arc::clone(&material_ground) as _,
-                }),
+        create_objects!("sphere", Point3::new(0.0, 0.0, -1.0), 0.5, material_center),
+        create_objects!("sphere", Point3::new(0.0, -100.5, -1.0), 100.0, material_ground),
+        create_objects!("sphere", Point3::new(-1.0, 0.0, -1.0), 0.5, material_left),
+        create_objects!("sphere", Point3::new(1.0, 0.0, -1.0), 0.5, material_right),
         ];
-    
+
+    // Camera
     let cam = Camera::<f64>::default();
     
     println!("P3");

@@ -35,7 +35,7 @@ where
 {
     let mut rng = rand::thread_rng();
     let mut p: Vec3<T> = Vec3::new(1., 1., 1.);
-    while dot(p, p) >= T::from_f64(1.0).unwrap() {
+    while dot(&p, &p) >= T::from_f64(1.0).unwrap() {
         p = Vec3::new(rng.gen::<f64>(), rng.gen::<f64>(),rng.gen::<f64>()) * T::from_f64(2.).unwrap() - Vec3::new(1., 1., 1.);
     }
     p.to_unit()

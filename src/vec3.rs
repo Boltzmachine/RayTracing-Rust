@@ -156,7 +156,7 @@ impl<T: SVecElem + Float> Vec3<T> {
     }
 }
 
-pub fn dot<T: SVecElem> (v1: Vec3<T>, v2: Vec3<T>) -> T {
+pub fn dot<T: SVecElem> (v1: &Vec3<T>, v2: &Vec3<T>) -> T {
     v1.x() * v2.x() + v1.y() * v2.y() + v1.z() * v2.z()
 }
 

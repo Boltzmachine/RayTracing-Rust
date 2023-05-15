@@ -3,13 +3,13 @@ use crate::vec3::*;
 use crate::ray::*;
 use crate::materials::*;
 
-use std::rc::Rc;
 use std::sync::Arc;
 use num::Float;
 
-pub struct HitRecord<T: SVecElem> {
+pub struct HitRecord<'a, T: SVecElem> {
     pub p: Point3<T>,
     pub normal: Vec3<T>,
+    pub material: Arc<dyn Material<T> + 'a>,
     pub t: T,
     pub front_face: bool,
 }
@@ -34,9 +34,9 @@ where
 {
     fn hit(&self, ray: &Ray<T>, t_min: T, t_max: T) -> Option<HitRecord<T>> {
         let oc = ray.origin - self.center;
-        let a = dot(ray.direction, ray.direction);
-        let half_b = dot(oc, ray.direction);
-        let c = dot(oc, oc) - self.radius * self.radius;
+        let a = dot(&ray.direction, &ray.direction);
+        let half_b = dot(&oc, &ray.direction);
+        let c = dot(&oc, &oc) - self.radius * self.radius;
 
         let discriminant: T = half_b * half_b - a * c;
         if discriminant < 0.0.into() {
@@ -53,13 +53,14 @@ where
         }
         let p = ray.at(root);
         let mut normal = (p - self.center) / self.radius;
-        let front_face = dot(ray.direction, normal) < 0.0.into();
+        let front_face = dot(&ray.direction, &normal) < 0.0.into();
 
         if !front_face { normal = - normal; }
 
         Some(HitRecord {
             t: root,
             p,
+            material: Arc::clone(&self.material),
             normal,
             front_face,
         })
