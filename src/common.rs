@@ -22,7 +22,7 @@ pub const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
 pub const AA_SAMPLES: u32 = 500;
 
 // Threads
-pub const NUM_THREADS: usize = 20;
+pub const NUM_THREADS: usize = 8;
 
 pub fn random_in_unit_sphere<T>() -> Vec3<T>
 where
