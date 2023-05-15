@@ -21,7 +21,7 @@ where
     fn hit(&self, ray: &Ray<T>, t_min: T, t_max: T) -> Option<HitRecord<T>>;
 }
 
-pub struct Sphere<'a, T: SVecElem> {
+pub struct Sphere<'a, T: SVecElem + Float> {
     pub center: Point3<T>,
     pub radius: T,
     pub material: Arc<dyn Material<T> + 'a>
@@ -30,7 +30,6 @@ pub struct Sphere<'a, T: SVecElem> {
 impl<T> Hittable<T> for Sphere<'_, T>
 where
     T: SVecElem + Float,
-    f64: Into<T>
 {
     fn hit(&self, ray: &Ray<T>, t_min: T, t_max: T) -> Option<HitRecord<T>> {
         let oc = ray.origin - self.center;
@@ -39,7 +38,7 @@ where
         let c = dot(&oc, &oc) - self.radius * self.radius;
 
         let discriminant: T = half_b * half_b - a * c;
-        if discriminant < 0.0.into() {
+        if discriminant < T::from_f64(0.).unwrap() {
             return None;
         }
         let sqrtd = discriminant.sqrt();
@@ -53,7 +52,7 @@ where
         }
         let p = ray.at(root);
         let mut normal = (p - self.center) / self.radius;
-        let front_face = dot(&ray.direction, &normal) < 0.0.into();
+        let front_face = dot(&ray.direction, &normal) < T::from_f64(0.).unwrap();
 
         if !front_face { normal = - normal; }
 

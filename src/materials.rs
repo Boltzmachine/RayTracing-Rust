@@ -1,4 +1,5 @@
 use num::Float;
+use rand::Rng;
 
 use crate::hittable::*;
 use crate::ray::*;
@@ -16,7 +17,7 @@ impl<T> Material<T> for Lambertian<T>
 where
     T: SVecElem + Float,
 {
-    fn scatter(&self, ray_in: &Ray<T>, rec: &HitRecord<T>) -> Option<(Color3<T>, Ray<T>)> {
+    fn scatter(&self, _ray_in: &Ray<T>, rec: &HitRecord<T>) -> Option<(Color3<T>, Ray<T>)> {
         let mut scatter_direction: Vec3<T> = rec.normal + random_in_unit_sphere();
 
         if scatter_direction.is_close(T::from_f64(0.).unwrap()) {
@@ -62,6 +63,14 @@ pub struct Dielectric<T: SVecElem + Float> {
     pub ir: T,
 }
 
+impl<T: SVecElem + Float> Dielectric<T> {
+    fn reflectance(cosine: T, ref_idx: T) -> T {
+        let r0 = (T::from_i8(1).unwrap() - ref_idx) / (T::from_i8(1).unwrap() + ref_idx);
+        let r0 = r0 * r0;
+        r0 + (T::from_i8(1).unwrap() - r0) * T::powi(T::from_i8(1).unwrap() - cosine, 5)
+    }
+} 
+
 impl<T> Material<T> for Dielectric<T>
 where
     T: SVecElem + Float,
@@ -76,10 +85,20 @@ where
         };
 
         let unit_direction = ray_in.direction.to_unit();
-        let refracted = refract(&unit_direction, &rec.normal, refraction_ratio);
+
+        let cos_theta = dot(&-unit_direction, &rec.normal).min(T::from_i8(1).unwrap());
+        let sin_theta = T::sqrt(T::from_i8(1).unwrap() - cos_theta * cos_theta);
+        let cannot_refract = refraction_ratio * sin_theta > T::from_i8(1).unwrap();
+        
+        let direction = if cannot_refract || Dielectric::<T>::reflectance(cos_theta, refraction_ratio).to_f64().unwrap() > rand::thread_rng().gen() {
+            reflect(&unit_direction, &rec.normal)
+        } else {
+            refract(&unit_direction, &rec.normal, refraction_ratio)
+        };
+
         let scattered = Ray::<T> {
             origin: rec.p,
-            direction: refracted,
+            direction: direction,
         };
         Some((attenuation, scattered))
     }

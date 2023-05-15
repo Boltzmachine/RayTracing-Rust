@@ -1,6 +1,5 @@
 use crate::vec3::*;
 use crate::common::SVecElem;
-use std::cmp::min;
 use num::{Float, abs};
 
 
@@ -26,7 +25,7 @@ pub fn refract <T: SVecElem + Float>(uv: &Vec3<T>, n: &Vec3<T>, etai_over_etat: 
     let cos_theta = dot(&-*uv, n).min(T::from_i8(1).unwrap());
 
     let r_out_perp = (*uv + *n * cos_theta) * etai_over_etat;
-    let r_out_parallel = *n * -T::sqrt(T::from_i8(1).unwrap() - dot(&r_out_perp, &r_out_perp));
+    let r_out_parallel = *n * -T::sqrt(abs(T::from_i8(1).unwrap() - dot(&r_out_perp, &r_out_perp)));
     r_out_perp + r_out_parallel
 }
 

@@ -75,50 +75,87 @@ where
 
 
 macro_rules! create_material {
-    ("lambertian", ($r:expr, $g:expr, $b:expr)) => {
-        Arc::new(Lambertian::<f64> {albedo: Color3::new($r, $g, $b)})
+    ("lambertian", $generic:ty, ($r:expr, $g:expr, $b:expr)) => {
+        Arc::new(Lambertian::<$generic> {albedo: Color3::new($r, $g, $b)})
     };
-    ("metal", ($r:expr, $g:expr, $b:expr), $f:expr) => {
-        Arc::new(Metal::<f64> {albedo: Color3::new($r, $g, $b), fuzz: $f})
+    ("metal", $generic:ty, ($r:expr, $g:expr, $b:expr), $f:expr) => {
+        Arc::new(Metal::<$generic> {albedo: Color3::new($r, $g, $b), fuzz: <$generic>::from_f64($f).unwrap()})
     };
-    ("dielectric", $ir:expr) => {
-        Arc::new(Dielectric::<f64> {ir: $ir})
+    ("dielectric", $generic:ty, $ir:expr) => {
+        Arc::new(Dielectric::<$generic> {ir: <$generic>::from_f64($ir).unwrap()})
     }
 }
 
-macro_rules! create_objects {
-    ("sphere", $center:expr, $radius:expr, $material:expr) => {
-        Box::new(Sphere {
-                    center: $center,
-                    radius: $radius,
+macro_rules! create_object {
+    ("sphere", $generic:ty, $center:expr, $radius:expr, $material:expr) => {
+        Box::new(Sphere::<$generic> {
+                    center: Point3::<$generic>::new($center.0, $center.1, $center.2),
+                    radius: <$generic>::from_f64($radius).unwrap(),
                     material: Arc::clone(&$material) as _,
                 })
     };
 }
 
+fn random_scene<'a, T>() -> HittableList<'a, T>
+where
+    T: 'a + SVecElem + Float,
+{
+    let mut rng = rand::thread_rng();
+    
+    let mut world = HittableList::<T>::new();
+
+    let ground_material = create_material!("lambertian", T, (0.5, 0.5, 0.5));
+    world.push(create_object!("sphere", T, (0., -1000., 0.), 1000., ground_material));
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat = rng.gen::<f64>();
+            let (center_x, center_y, center_z) = (a as f64 + 0.9 * rng.gen::<f64>(), 0.2, b as f64 + 0.9 * rng.gen::<f64>());
+            let center = Point3::<T>::new(center_x, center_y, center_z);
+
+            if (center - Point3::<T>::new(4., 0.2, 0.)).length() > T::from_f64(0.9).unwrap() {
+                let sphere_material: Arc<dyn Material<T>> = if choose_mat < 0.8 {
+                    // diffuse
+                    create_material!("lambertian", T, (rng.gen(), rng.gen(), rng.gen()))
+                } else if choose_mat < 0.95 {
+                    // metal
+                    let fuzz = rng.gen_range(0.0..0.5);
+                    create_material!("metal", T, (rng.gen_range(0.5..1.0), rng.gen_range(0.5..1.0), rng.gen_range(0.5..1.0)), fuzz)
+                } else {
+                    // glass
+                    create_material!("dielectric", T, 1.5)
+                };
+                world.push(create_object!("sphere", T, (center_x, center_y, center_z), 0.2, sphere_material));
+            }
+        }
+    }
+
+    let material1 = create_material!("dielectric", T, 1.5);
+    world.push(create_object!("sphere", T, (0., 1., 0.), 1.0, material1));
+
+    let material2 = create_material!("lambertian", T, (0.4, 0.2, 0.1));
+    world.push(create_object!("sphere", T, (-4., 1., 0.), 1.0, material2));
+
+    let material3 = create_material!("metal", T, (0.7, 0.6, 0.5), 0.0);
+    world.push(create_object!("sphere", T, (4., 1., 0.), 1.0, material3));
+
+    world
+}
+
 fn main() {
-
-    // Materials
-    let material_ground = create_material!("lambertian", (0.8, 0.8, 0.0));
-    let material_center = create_material!("dielectric", 1.5);
-    let material_left = create_material!("dielectric", 1.5);
-    let material_right = create_material!("metal", (0.8, 0.6, 0.2), 1.0);
-
     // World
-    let world: HittableList::<'_, f64> = vec![
-        create_objects!("sphere", Point3::new(0.0, 0.0, -1.0), 0.5, material_center),
-        create_objects!("sphere", Point3::new(0.0, -100.5, -1.0), 100.0, material_ground),
-        create_objects!("sphere", Point3::new(-1.0, 0.0, -1.0), 0.5, material_left),
-        create_objects!("sphere", Point3::new(1.0, 0.0, -1.0), 0.5, material_right),
-        ];
+    eprintln!("Creating world...");
+    let world = random_scene();
+    eprintln!("World created!");
 
     // Camera
-    let cam = Camera::<f64>::default();
+    let cam = Camera::<f64>::new((13., 2., 3.), (0., 0., 0.), (0., 1., 0.), 20.0, ASPECT_RATIO, 0.1, 10.);
     
     println!("P3");
     println!("{} {}", IMAGE_WIDTH, IMAGE_HEIGHT);
     println!("255");
 
+    eprintln!("Rendering begins...");
     let pool = ThreadPool::new(NUM_THREADS);
     let (tx, rx) = mpsc::channel::<Image<f64>>();
 
@@ -136,7 +173,7 @@ fn main() {
                 let image = render_single(&thread_world, &thread_cam);
                 let mut thread_job_left = thread_job_left.lock().unwrap();
                 *thread_job_left -= 1;
-                eprintln!("{} jobs left", *thread_job_left);
+                eprint!("{} jobs left\r", *thread_job_left);
                 drop(thread_job_left);
                 thread_tx.send(image).unwrap();
             }
@@ -152,7 +189,9 @@ fn main() {
             image[i] += single[i];
         }
     }
+    eprintln!("Rendering finishes...");
 
-    eprintln!("All images reduced, writing image...");
+    eprintln!("Writing image...");
     write_image(&image);
+    eprintln!("All completed!");
 }
