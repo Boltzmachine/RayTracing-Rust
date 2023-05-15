@@ -1,30 +1,35 @@
+use crate::common::SVecElem;
 use crate::vec3::*;
 use crate::ray::*;
+use crate::materials::*;
+
+use std::rc::Rc;
+use std::sync::Arc;
 use num::Float;
 
-pub struct HitRecord<T> {
+pub struct HitRecord<T: SVecElem> {
     pub p: Point3<T>,
     pub normal: Vec3<T>,
     pub t: T,
     pub front_face: bool,
 }
 
-pub trait Hittable<T> 
+pub trait Hittable<T>
 where
-    T: Float,
+    T: SVecElem,
 {
     fn hit(&self, ray: &Ray<T>, t_min: T, t_max: T) -> Option<HitRecord<T>>;
 }
 
-#[derive(Debug)]
-pub struct Sphere<T> {
+pub struct Sphere<'a, T: SVecElem> {
     pub center: Point3<T>,
     pub radius: T,
+    pub material: Arc<dyn Material<T> + 'a>
 }
 
-impl<T> Hittable<T> for Sphere<T>
+impl<T> Hittable<T> for Sphere<'_, T>
 where
-    T: Float,
+    T: SVecElem + Float,
     f64: Into<T>
 {
     fn hit(&self, ray: &Ray<T>, t_min: T, t_max: T) -> Option<HitRecord<T>> {

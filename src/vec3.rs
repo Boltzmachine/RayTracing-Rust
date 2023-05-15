@@ -1,11 +1,11 @@
-use std::ops::{Add, Sub, Mul, Div, Index, IndexMut, Neg, AddAssign};
-use std::marker::Copy;
-use num::{Float, FromPrimitive};
+use std::ops::{Add, Sub, Mul, Div, Neg, Index, IndexMut, AddAssign};
+use num::Float;
+use crate::common::{SVecElem, UVecElem};
 
-#[derive(PartialEq, Debug, Copy, Clone)]
-pub struct Vec3<T> (pub T, pub T, pub T);
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub struct Vec3<T: UVecElem> (pub T, pub T, pub T);
 
-impl<T: Copy + Clone> Vec3<T> {
+impl<T: SVecElem> Vec3<T> {
     pub fn x(&self) -> T { self.0 }
     pub fn y(&self) -> T { self.1 }
     pub fn z(&self) -> T { self.2 }
@@ -13,7 +13,7 @@ impl<T: Copy + Clone> Vec3<T> {
 
 impl<T> Vec3<T> 
 where
-    T: FromPrimitive,
+    T: UVecElem,
 {
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self(T::from_f64(x).unwrap(), T::from_f64(y).unwrap(), T::from_f64(z).unwrap())
@@ -21,21 +21,21 @@ where
 }
 
 // Math operation
-impl<T: Float> Add for Vec3<T> {
+impl<T: SVecElem> Add for Vec3<T> {
     type Output = Self;
     fn add(self, other: Self) -> Self::Output {
         Self(self.x() + other.x(), self.y() + other.y(), self.z() + other.z())
     }
 }
 
-impl<T: Float> Add<T> for Vec3<T> {
+impl<T: SVecElem> Add<T> for Vec3<T> {
     type Output = Self;
     fn add(self, other: T) -> Self::Output {
         Self(self.x() + other, self.y() + other, self.z() + other )
     }
 }
 
-impl<T: Float> AddAssign for Vec3<T> {
+impl<T: SVecElem> AddAssign for Vec3<T> {
     fn add_assign(&mut self, other: Self) {
         self.0 = self.0 + other.x();
         self.1 = self.1 + other.y();
@@ -43,7 +43,7 @@ impl<T: Float> AddAssign for Vec3<T> {
     }
 }
 
-impl<T: Float> AddAssign<T> for Vec3<T> {
+impl<T: SVecElem> AddAssign<T> for Vec3<T> {
     fn add_assign(&mut self, other: T) {
         self.0 = self.0 + other;
         self.1 = self.1 + other;
@@ -51,49 +51,57 @@ impl<T: Float> AddAssign<T> for Vec3<T> {
     }
 }
 
-impl<T: Float> Sub for Vec3<T> {
+
+impl<T: SVecElem> Neg for Vec3<T> {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        Self(-self.x(), -self.y(), -self.z())
+    }
+}
+
+impl<T: SVecElem> Sub for Vec3<T> {
     type Output = Self;
     fn sub(self, other: Self) -> Self::Output {
         Self(self.x() - other.x(), self.y() - other.y(), self.z() - other.z())
     }
 }
 
-impl<T: Float> Mul<T> for Vec3<T> {
+impl<T: SVecElem> Sub<T> for Vec3<T> {
+    type Output = Self;
+    fn sub(self, other: T) -> Self::Output {
+        Self(self.x() - other, self.y() - other, self.z() - other)
+    }
+}
+
+impl<T: SVecElem> Mul<T> for Vec3<T> {
     type Output = Self;
     fn mul(self, other: T) -> Self::Output {
         Self(self.x() * other, self.y() * other, self.z() * other)
     }
 }
 
-impl<T: Float> Mul<Vec3<T>> for Vec3<T> {
+impl<T: SVecElem> Mul<Vec3<T>> for Vec3<T> {
     type Output = Self;
     fn mul(self, other: Self) -> Self::Output {
         Self(self.x() * other.x(), self.y() * other.y(), self.z() * other.z())
     }
 }
 
-impl<T: Float> Div<T> for Vec3<T> {
+impl<T: SVecElem> Div<T> for Vec3<T> {
     type Output = Self;
     fn div(self, rhs: T) -> Self::Output {
         Self(self.x() / rhs, self.y() / rhs, self.z() / rhs)
     }
 }
 
-impl<T:Float> Div<Vec3<T>> for Vec3<T> {
+impl<T: SVecElem> Div<Vec3<T>> for Vec3<T> {
     type Output = Self;
     fn div(self, other: Self) -> Self::Output {
         Self(self.x() / other.x(), self.y() / other.y(), self.z() / other.z())
     }
 }
 
-impl <T: Float> Neg for Vec3<T> {
-    type Output = Self;
-    fn neg(self) -> Self::Output {
-        Self(-self.x(), -self.y(), -self.z())
-    }
-} 
-
-impl<T> Index<usize> for Vec3<T> {
+impl<T: SVecElem> Index<usize> for Vec3<T> {
     type Output = T;
     fn index(&self, index: usize) -> &Self::Output {
         match index {
@@ -105,7 +113,7 @@ impl<T> Index<usize> for Vec3<T> {
     }
 }
 
-impl<T> IndexMut<usize> for Vec3<T> {
+impl<T: SVecElem> IndexMut<usize> for Vec3<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         match index {
             0 => &mut self.0,
@@ -116,24 +124,45 @@ impl<T> IndexMut<usize> for Vec3<T> {
     }
 }
 
-impl<T: Float> Vec3<T> {
+pub trait IsClose<T> {
+    fn is_close(&self, other: T) -> bool;
+}
+
+impl<T: SVecElem + Float> IsClose<T> for Vec3<T> {
+    fn is_close(&self, other: T) -> bool {
+        let eps = T::from_f64(1e-8).unwrap();
+        let diff = *self - other;
+        diff.x().abs() < eps && diff.y().abs() < eps && diff.z().abs() < eps
+    }
+}
+
+impl<T: SVecElem + Float> IsClose<Vec3<T>> for Vec3<T> {
+    fn is_close(&self, other: Self) -> bool {
+        let eps = T::from_f64(1e-8).unwrap();
+        let diff = *self - other;
+        diff.x().abs() < eps && diff.y().abs() < eps && diff.z().abs() < eps
+    }
+}
+
+impl<T: SVecElem + Float> Vec3<T> {
     pub fn length(&self) -> T {
         let val = self.x() * self.x() + self.y() * self.y() + self.z() * self.z();
         val.sqrt()
     }
 
-    pub fn to_unit(self) -> Self {
+    pub fn to_unit(&self) -> Self {
         let len = self.length();
         Self(self.x() / len, self.y() / len, self.z() / len)
     }
 }
 
-pub fn dot<T: Float> (v1: Vec3<T>, v2: Vec3<T>) -> T {
+pub fn dot<T: SVecElem> (v1: Vec3<T>, v2: Vec3<T>) -> T {
     v1.x() * v2.x() + v1.y() * v2.y() + v1.z() * v2.z()
 }
 
 pub use Vec3 as Point3;
 pub use Vec3 as Color3;
+
 
 #[cfg(test)]
 mod tests {
@@ -142,6 +171,11 @@ mod tests {
     #[test]
     fn new() {
         let _: Vec3<f32> = Vec3::new(1.0, 2.0, 3.0);
+    }
+
+    #[test]
+    fn u8() {
+        let _: Vec3<u8> = Vec3::new(1.0, 2.0, 3.0);
     }
 
     #[test]
@@ -262,5 +296,17 @@ mod tests {
     fn to_unit() {
         let v = Vec3(1.0, 2.0, 2.0);
         assert_eq!(v.to_unit().length(), 1.)
+    }
+
+    #[test]
+    fn is_close() {
+        let v = Vec3(1.0, 2.0, 2.0);
+        let u = Vec3(1.0, 2.0, 2.0);
+        assert!(v.is_close(u));
+        assert!(!v.is_close(u + 1.));
+
+        let v = Vec3(0., 0., 0.);
+        assert!(v.is_close(0.));
+        assert!(!v.is_close(1.))            
     }
  }

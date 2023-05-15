@@ -1,12 +1,13 @@
+use crate::common::SVecElem;
 use crate::ray::*;
 use crate::hittable::*;
-use num::Float;
 
-pub type HittableList<T> = Vec<Box<dyn Hittable<T> + Send + Sync>>;
 
-impl<T> Hittable<T> for HittableList<T>
+pub type HittableList<'a, T> = Vec<Box<dyn Hittable<T> + 'a + Send + Sync>>;
+
+impl<T> Hittable<T> for HittableList<'_, T>
 where
-    T: Float,
+    T: SVecElem,
 {
     fn hit(&self, ray: &Ray<T>, t_min: T, t_max: T) -> Option<HitRecord<T>> {
         let mut closest_so_far = t_max;

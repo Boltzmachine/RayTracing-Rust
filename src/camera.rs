@@ -1,11 +1,10 @@
 use crate::vec3::*;
 use crate::common::*;
 use crate::ray::*;
-use num::{FromPrimitive, Float};
 
 pub struct Camera<T> 
 where
-    T: FromPrimitive
+    T: SVecElem
 {
     pub origin: Point3<T>,
     pub lower_left_corner: Point3<T>,
@@ -15,7 +14,7 @@ where
 
 impl<T> Default for Camera<T> 
 where
-    T: FromPrimitive + Float
+    T: SVecElem
 {
     fn default () -> Self {
         let origin = Point3::<T>::new(0.0, 0.0, 0.0);
@@ -34,7 +33,7 @@ where
 
 impl<T> Camera<T> 
 where
-    T: FromPrimitive + Float,
+    T: SVecElem,
 {
     pub fn get_ray(&self, u: f64, v: f64) -> Ray<T> {
         if u == 0.5 && v == 0.5 {

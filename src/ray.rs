@@ -1,16 +1,15 @@
-use crate::vec3::*;
-use num::Float;
+use crate::{vec3::*, common::SVecElem};
 
-#[derive(Debug, Copy, Clone)]
+
 pub struct Ray<T> 
 where
-    T: Float
+    T: SVecElem
 {
     pub origin: Point3<T>,
     pub direction: Vec3<T>,
 }
 
-impl<T: Float> Ray<T> {
+impl<T: SVecElem> Ray<T> {
     pub fn at(&self, t: T) -> Point3<T> {
         self.origin + self.direction * t
     }

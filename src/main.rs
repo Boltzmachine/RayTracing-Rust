@@ -5,30 +5,37 @@ mod ray;
 mod hittable;
 mod hittable_list;
 mod image;
+mod materials;
 
 use common::*;
+use num::Float;
 use vec3::*;
 use camera::*;
 use ray::*;
 use hittable_list::*;
-use num::{Float, FromPrimitive};
 use hittable::*;
 use image::*;
+use materials::*;
 
 use std::f64::INFINITY;
+use std::rc::Rc;
 use threadpool::ThreadPool;
 use std::sync::{mpsc, Arc, Mutex};
 use rand::Rng;
 
 
-fn ray_color<T>(ray: Ray<T>, world: &HittableList<T>) -> Color3<T>
+fn ray_color<T>(ray: Ray<T>, world: &HittableList<T>, depth: u32) -> Color3<T>
 where
-    T: Float + FromPrimitive,
+    T: SVecElem + Float,
 {   
-    let t = world.hit(&ray, T::from_f64(0.0).unwrap(), T::from_f64(INFINITY).unwrap());
+    if depth == 0 {
+        return Color3::new(0.0, 0.0, 0.0);
+    }
+    let t = world.hit(&ray, T::from_f64(0.001).unwrap(), T::from_f64(INFINITY).unwrap());
     match t {
         Some(hit) => {
             let target = hit.p + hit.normal + random_in_unit_sphere();
+            ray_color(Ray::<T> { origin: hit.p, direction: target - hit.p }, world, depth-1) * T::from_f64(0.5).unwrap()
         },
         None => {
             let unit_direction = ray.direction.to_unit();
@@ -40,10 +47,11 @@ where
 
 fn render_single<T> (world: &HittableList<T>, cam: &Camera<T>) -> Image<T>
 where
-    T: Float + FromPrimitive,
+    T: SVecElem + Float,
 {   
     let length = (IMAGE_WIDTH * IMAGE_HEIGHT) as usize;
     let mut image = Vec::with_capacity(length);
+    const MAX_BOUNCE: u32 = 50;
 
     let mut rng = rand::thread_rng();
 
@@ -54,7 +62,7 @@ where
             
             let ray = cam.get_ray(u, v);
 
-            let pixel_color = ray_color(ray, &world);
+            let pixel_color = ray_color(ray, &world, MAX_BOUNCE);
             image.push(pixel_color);
         }
     }
@@ -62,15 +70,21 @@ where
 }
 
 fn main() {
+
+    // Materials
+    let material_ground = Arc::new(Lambertian::<f64> {albedo: Color3::new(0.8, 0.8, 0.0)});
+
     // World
-    let world: HittableList::<f64> = vec![
+    let world: HittableList::<'_, f64> = vec![
         Box::new(Sphere {
                     center: Point3::new(0.0, 0.0, -1.0),
                     radius: 0.5,
+                    material: Arc::clone(&material_ground) as _,
                 }),
         Box::new(Sphere {
                     center: Point3::new(0.0, -100.5, -1.0),
                     radius: 100.0,
+                    material: Arc::clone(&material_ground) as _,
                 }),
         ];
     
@@ -97,7 +111,7 @@ fn main() {
                 let image = render_single(&thread_world, &thread_cam);
                 let mut thread_job_left = thread_job_left.lock().unwrap();
                 *thread_job_left -= 1;
-                // eprintln!("{} jobs left", *thread_job_left);
+                eprintln!("{} jobs left", *thread_job_left);
                 drop(thread_job_left);
                 thread_tx.send(image).unwrap();
             }
@@ -110,7 +124,7 @@ fn main() {
         let single = rx.recv().unwrap();
         assert_eq!(single.len(), image.len());
         for i in 0..single.len() {
-            image[i] += single[i] / AA_SAMPLES as f64;
+            image[i] += single[i];
         }
     }
 
